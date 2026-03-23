@@ -16,6 +16,7 @@ classifiers = [
     
 ]
 dependencies = [
+    "ffmpeg>=1.4",
     "ipython",
     "jupyterlab",
     "librosa>=0.11.0",
@@ -29,8 +30,8 @@ dependencies = [
     "python-dotenv",
     "ruff",
     "scikit-learn",
-    "torch>=2.10.0",
     "torchaudio>=2.10.0",
+    "torchcodec>=0.10.0",
     "tqdm",
     "typer",
 ]
