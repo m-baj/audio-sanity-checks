@@ -1,0 +1,51 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "audio_sanity_checks"
+version = "0.0.1"
+description = "This repository provides a replication and adaptation of the Adebayo et al. (2018) methodology to verify whether popular eXplainable AI (XAI) algorithms truly reflect the logic of audio models or merely visualize the inherent structure of the spectrogram"
+authors = [
+  { name = "Maksymilian Baj" },
+]
+
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    
+]
+dependencies = [
+    "ipython",
+    "jupyterlab",
+    "librosa>=0.11.0",
+    "loguru",
+    "matplotlib",
+    "notebook",
+    "numpy",
+    "pandas",
+    "pip",
+    "pytest",
+    "python-dotenv",
+    "ruff",
+    "scikit-learn",
+    "torch>=2.10.0",
+    "torchaudio>=2.10.0",
+    "tqdm",
+    "typer",
+]
+requires-python = "~=3.12.0"
+
+
+[tool.ruff]
+line-length = 99
+src = ["audio_sanity_checks"]
+include = ["pyproject.toml", "audio_sanity_checks/**/*.py"]
+
+[tool.ruff.lint]
+extend-select = ["I"]  # Add import sorting
+
+[tool.ruff.lint.isort]
+known-first-party = ["audio_sanity_checks"]
+force-sort-within-sections = true
+
