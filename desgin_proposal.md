@@ -8,15 +8,21 @@ Głównym celem projektu jest systematyczna weryfikacja wiarygodności metod atr
 
 * [Adebayo et al. (2018) Sanity Checks for Saliency Maps, NeurIPS](https://proceedings.neurips.cc/paper_files/paper/2018/file/294a8ed24b1ad22ec2e7efea049b8737-Paper.pdf),
 * [Hedström et al. (2024) A Fresh Look at Sanity Checks for Saliency Maps](https://arxiv.org/pdf/2405.02383),
-* [Paissan et al. (2024) Listenable Maps for Audio Classifiers,
-ICML
-](https://arxiv.org/pdf/2403.13086),
+* [Paissan et al. (2024) Listenable Maps for Audio Classifiers, ICML](https://arxiv.org/pdf/2403.13086),
+* [Kong et al., (2020) PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition](https://arxiv.org/pdf/1912.10211)
 
 TODO: poszukać więcej artykułów
 
 ## Planowany zakres eksperymentów
 
-TODO: zakres eksperymentów
+TODO: Zweryfikować / dodać
+
+* przygotowanie danych wejściowych,
+* trenowanie wybranych modeli klasyfikacyjnych dla przygotowanych danych wejściowych,
+* analiza map atrybucji (Grad-CAM, Integrated Gradients, SmoothGrad, LRP Guided Backpropagation) dla modeli klasyfikujących audio na podstawie spektrogramów,
+* porównanie zachowania metod dla modelu poprawnie wytrenowanego, zrandomizowanego oraz uczonego na losowych etykietach,
+* ocena wyników zarówno jakościowo, jak i ilościowo z użyciem metryk podobieństwa map atrybucji,
+* weryfikacja, czy metody wyjaśniające odzwierciedlają decyzje modelu
 
 ## Planowany stack technologiczny
 
