@@ -34,7 +34,22 @@ TODO: Zweryfikować / dodać
 * **CLI & Logi:** `typer`, `loguru`, `tqdm`
 * **Wizualizacja:** `matplotlib`, `seaborn`
 
+## Funkcjonwalności
 
+TODO: Zweryfikować
+
+Przetwarzanie danych i Pipeline
+- Automatyczny preprocessing audio: Konwersja surowych plików dźwiękowych (WAV/MP3) na znormalizowane spektrogramy melowe o stałych wymiarach.
+- Wieloklasowa klasyfikacja sygnałów: Rozpoznawanie kategorii dźwięków przy użyciu zaawansowanych sieci neuronowych.
+- Trening wariantowy: Możliwość uczenia modelu w trzech trybach: na poprawnych danych, na danych z losowymi etykietami oraz praca na wagach całkowicie zrandomizowanych.
+
+Weryfikacja i Diagnostyka (Sanity Checks)
+- Kaskadowe niszczenie wag: Funkcja stopniowego resetowania parametrów sieci (od końca do początku) w celu sprawdzenia, czy mapy XAI faktycznie przestają być czytelne.
+- Automatyczne porównywanie map: Ilościowe wyliczanie podobieństwa między wyjaśnieniami (np. czy mapa dla modelu „pustego” różni się od mapy modelu wyuczonego).
+
+Raportowanie i Obsługa
+- Zarządzanie z poziomu terminala (CLI): Pełna kontrola nad eksperymentami (trening, generowanie map, testy Adebayo) za pomocą prostych komend tekstowych.
+- Eksport wyników: Zapisywanie przetworzonych map, metryk i logów w ustrukturyzowanych formatach (obrazy, pliki CSV/JSON).
 ## Harmonogram prac
 
 TODO: Zweryfikować
