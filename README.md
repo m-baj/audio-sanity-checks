@@ -4,7 +4,7 @@ This repository provides a replication and adaptation of the Adebayo et al. (201
 
 ## Design proposal
 
-[design_proposal.md](design_proposal.md)
+[design_proposal.md](docs/design_proposal.md)
 
 ## Project Organization
 

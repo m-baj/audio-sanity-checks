@@ -135,3 +135,107 @@ $$\hat{q}^{eMPRT} = \frac{\xi(\hat{e}) - \xi(e)}{\xi(e)}$$
 
 
 
+# Artykuł 3. – Listenable Maps for Audio Classifiers
+
+- link do artykułu: [https://arxiv.org/pdf/2403.13086](https://arxiv.org/pdf/2403.13086),
+- kod do eksperymentów: [https://github.com/speechbrain/speechbrain/tree/develop/recipes/ESC50/interpret](https://github.com/speechbrain/speechbrain/tree/develop/recipes/ESC50/interpret)
+
+## Wprowadzenie
+
+- ponieważ modele audio operują na mniej interpretowalnych wejściach takich jak spekrogramy mel, ciężej jest uzyskać jasne intepretacje za pomocą metod saliency,
+- lepszym rozwiązaniem byłoby wygenerowanie odsłuchiwalnych interpretacji,
+- autorzy proponują metodę L-MAC, która jest w stanie wygenerować odsłuchiwalne wyjaśnienie dla pretrenowanego klasyfikatora audio, który dostaje na wejściu spektrogram mel lub inny dowolny input,
+- rozwiązanie wykorzystuje dekoder, który korzysta z informacji z reprezentacji ukrytych pretrenowanego modelu i generuje maski binarne podkreślające istotne fragmenty sygnału audio,
+- następnie wygenerowana maska nakładana jest na spektrogram STFT (nie mel),
+- do wygenerowania z powrotem dźwięku potrzebna jest jeszcze faza, która brana jest z oryginalnego nagrania,
+- z tymi danymi można użyć Inverse Short-Time Fourier Transform (ISTFT) i otrzymuje się plik audio tylko z tymi dźwiękami, które najbardziej wpłynęły na decyzję klasyfikatora
+
+## Metodologia
+
+![](images/lmac-arch.png)
+
+- najpierw obliczany jest liniowy spektrogram X z oryginalnego sygnału audio
+- spektrogram X jest następnie przetwarzany przez blok ekstrakcji cech, który wyznacza cechy potrzebne dla pretrenowanego klasyfikatora np. FBANKs: 
+    - zestaw cech dźwiękowych, które naśladują sposób, w jaki ludzkie ucho odbiera częstotliwości,
+    - wykorzystuję skalę mel, która rozciąga niskie częstostliwości (gdzie człowiek słyszy detale) i ściska wysokie, których człowiek tak bardzo nie rozróżnia,
+    - zamienia gęsty, liniowy spektrogram STFT na znacznie mniejszą, skompresowaną macierz, ale jest to operacja stratna - tracimy precyzyjną informację o fazie i dokładnych harmonicznych
+- klasyfikator na podstawie tych cech generuje predykcje,
+- ukryte reprezentacje, których używa klasyfikator, trafiają do dekodera, jest on wytrenowany tak, aby wygenerować maskę binarną M, która oznacza tylko najistotniejsze dla decyzji fragmenty spektrogramu X
+- dekoder nie generuje maski dla specyficznych cech używanych przez klasyfikator np. log-mel, zamiast tego nakłada maskę na liniowy spektrogram X,
+- nastepnie poprzez wykorzystanie fazy obliczonej przez STFT na oryginalnym audio, można odwrócić zamaskowany spektrogram przez ISTFT i otrzymać odsłuchiwalne wyjaśnienie
+
+### Trenowanie dekodera
+
+- celem jest maksymalizacja pewności decyzji klasyfikatora dla części spektrogramu $M \odot X$ podczas minimalizacji pewności dla porcji wymaskowanej,
+- minimalizujemy błąd dla części zamaskowanej oraz maksymalizujemy błąd dla części wyciętej, tak aby to co maska wycięła nie zawierało żadnej istotnej informacji:
+
+$$\min_{\theta} \lambda_{in} \mathcal{L}_{in}(f(M_{\theta}(h) \odot X), y) - \lambda_{out} \mathcal{L}_{out}(f((1 - M_{\theta}(h)) \odot X), y) + R(M_{\theta}(h))$$
+
+* **$\min_{\theta}$**: Minimalizacja po parametrach dekodera $\theta$.
+* **$\mathcal{L}_{in}$**: Koszt "wejściowy" (kategoryczna entropia krzyżowa) dla części spektrogramu wybranej przez maskę $M$. Dąży do tego, aby model zachował pewność predykcji na podstawie tylko tych fragmentów.
+    - w entropii porównywane są dwa rozkłady prawdopodobieństwa: docelowy, w którym prawdziwa klasa ma wartość 1 i reszta 0, z tym który wygenerował klasyfikator dla zamaskowanego fragmentu
+* **$\mathcal{L}_{out}$**: Koszt dla części "wyciętej" $(1-M)$. Znak minus przed tym członem oznacza, że dążymy do **maksymalizacji** błędu dla odrzuconych fragmentów, aby nie zawierały one istotnych cech.
+* **$f(\cdot)$**: Zamrożony, wstępnie wytrenowany klasyfikator audio.
+* **$M_{\theta}(h)$**: Maska binarna generowana przez dekoder na podstawie ukrytych reprezentacji $h$ klasyfikatora.
+* **$\odot$**: Mnożenie element po elemencie (Hadamard product) maski i liniowego spektrogramu $X$.
+* **$R(M_{\theta}(h))$**: Człon regularyzacyjny, który zazwyczaj zawiera normę $L_1$ wymuszającą rzadkość maski (aby wyjaśnienie było zwięzłe).
+
+### Metryki stosowane w eksperymentach
+
+Do pomiaru wierności wyjaśnień metody L-MAC autorzy wykorzystali metryki:
+
+- **Faithfulness on Spectra (FF)**: 
+    - Mierzy, jak ważna jest wygenerowana interpretacja dla klasyfikatora.
+    - Jest obliczana poprzez pomiar spadku wartości logitów dla konkretnej klasy, gdy do klasyfikatora podawana jest część spektrogramu wykluczona przez maskę (*masked-out*).
+    - Jeżeli wartość tej metryki jest duża, oznacza to, że zamaskowana część spektrogramu $X$ ma bardzo duży wpływ na decyzję klasyfikatora dla danej klasy $c$.
+
+- **Average Increase (AI)**:
+    - Mierzy wzrost pewności (*confidence*) klasyfikatora dla części spektrogramu wybranej przez maskę (*masked-in*).
+    - Jest to wyrażony w procentach stosunek liczby przypadków, w których pewność modelu dla zamaskowanego fragmentu była wyższa niż dla pełnego obrazu, do całkowitej liczby próbek.
+    - W przypadku tej metryki im większa wartość, tym lepiej.
+
+- **Average Drop (AD)**:
+    - Mierzy, jak duża część pewności modelu zostaje utracona po nałożeniu maski na wejście.
+    - Oblicza średni procentowy spadek prawdopodobieństwa klasy docelowej między oryginalnym sygnałem a sygnałem zamaskowanym.
+    - W przypadku tej metryki im mniejsza wartość, tym lepiej.
+
+- **Average Gain (AG)**:
+    - Mierzy, jak dużo pewności zyskuje model po zamaskowaniu wejścia, biorąc pod uwagę dostępny "margines" do pełnej pewności (wartości 1.0).
+    - Pozwala ocenić, czy maska pomogła modelowi skupić się na właściwych cechach, eliminując szum tła.
+    - W przypadku tej metryki im większa wartość, tym lepiej.
+
+- **Input Fidelity (Fid-In)**:
+    - Sprawdza, czy klasyfikator zwraca tę samą klasę decyzyjną na podstawie samej zamaskowanej części wejścia, co na podstawie pełnego sygnału.
+    - Jest to średnia liczba przypadków, w których predykcja dla $X \odot M$ pokrywa się z predykcją dla $X$.
+    - Wyższe wartości wskazują na lepszą wierność metody.
+
+- **Sparseness (SPS)**:
+    - Mierzy rzadkość (zwięzłość) mapy atrybucji.
+    - Sprawdza, czy tylko te cechy, którym przypisano wysoką istotność, faktycznie przyczyniają się do predykcji sieci neuronowej.
+    - Większe wartości oznaczają bardziej zwięzłe i konkretne wyjaśnienia.
+
+- **Complexity (COMP)**:
+    - Mierzy entropię rozkładu wkładu poszczególnych cech do końcowej atrybucji.
+    - Pozwala ocenić stopień skomplikowania wyjaśnienia.
+    - Mniejsze wartości wskazują na mniej złożone, a przez to łatwiejsze do zinterpretowania wyjaśnienia.
+
+
+
+### Najważniejsze wnioski
+
+#### 1. Ewaluacja wierności (Sekcja 3.2)
+W testach ilościowych przeprowadzonych na zbiorze dźwięków środowiskowych ESC50, metoda L-MAC wykazała znaczną przewagę nad istniejącymi rozwiązaniami:
+* **Dominacja nad metodami gradientowymi**: L-MAC uzyskał znacznie wyższe wyniki w metrykach takich jak AI (Average Increase), AG (Average Gain) czy Fid-In (Input Fidelity) w porównaniu do klasycznych metod typu Saliency, SmoothGrad czy Integrated Gradients.
+* **Skuteczność w trudnych warunkach**: Metoda zachowała wysoką wierność nawet w testach "Out-of-Domain", gdzie sygnał był zanieczyszczony białym szumem lub nagraniami mowy. Większość metod gradientowych w tych warunkach niemal całkowicie traciła zdolność do poprawnego wskazywania istotnych cech.
+* **Porównanie z metodami dekoderowymi**: L-MAC okazał się bardziej precyzyjny niż metoda L2I, generując maski o wyższej rzadkości (SPS), co oznacza, że wskazuje on konkretne źródła dźwięku zamiast rozmytych obszarów.
+
+#### 2. Badanie z udziałem ludzi (Sekcja 3.3)
+Autorzy przeprowadzili badanie subiektywne (User Study), w którym uczestnicy oceniali jakość i zrozumiałość generowanych wyjaśnień dźwiękowych:
+* **Wyższa ocena MOS**: Interpretacje generowane przez L-MAC otrzymały wyższe noty (Mean Opinion Score) niż te pochodzące z konkurencyjnej metody L2I.
+* **Wpływ Fine-tuningu**: Wykazano, że dodatkowy etap dostrajania (fine-tuning) dekodera pozwala uzyskać znacznie lepszą jakość dźwięku, którą preferują użytkownicy, bez istotnego pogorszenia parametrów matematycznych (wierności).
+
+#### 3. Testy poprawności - Sanity Checks (Sekcja 3.4)
+Aby upewnić się, że metoda faktycznie wyjaśnia działanie sieci, a nie tylko "ładnie wygląda", przeprowadzono rygorystyczne testy kontrolne:
+* **Test ROAR (Remove-and-Retrain)**: Wykazano, że usuwanie fragmentów uznanych przez L-MAC za najważniejsze powoduje znacznie szybszy spadek dokładności klasyfikatora niż usuwanie losowe. Potwierdza to, że metoda trafnie identyfikuje cechy semantyczne dźwięku.
+* **Czułość na parametry modelu (Cascading Randomization)**: Jest to kluczowy wynik – L-MAC pomyślnie przeszedł test randomizacji wag. Gdy wagi klasyfikatora są stopniowo zastępowane wartościami losowymi, mapy generowane przez L-MAC ulegają degradacji i tracą spójność. 
+* **Kontrast z GradCAM**: W przeciwieństwie do L-MAC, popularna metoda GradCAM okazała się niemal niewrażliwa na zmiany wag modelu, co sugeruje, że GradCAM działa bardziej jak prosty detektor krawędzi, a nie rzeczywiste wyjaśnienie "rozumowania" sieci.
