@@ -150,11 +150,6 @@ $$\hat{q}^{eMPRT} = \frac{\xi(\hat{e}) - \xi(e)}{\xi(e)}$$
 - oryginalny MPRT sugerował, że Guided BackProp jest mniej wiarygodny niż metody czysto gradientowe, testy eMPRT sklasyfikowały go jednak wyżej niż jej gradientowe odpowiedniki (Gradient, SmoothGrad)
 - duża zmienność wyników w zależności od architektury sieci np. w ResNet połączenia rezydualne częściowo zachowują strukturę cech w przepływie w przód, co utrudnia pokazanie czystego chaosu, z tego powodu autorzy zalecają ocenianie metod głównie na podstawie różnicy między modelem w pełni sprawnym a w pełni zrandomizownym.
 
-
-
-
-
-
 # Artykuł 3. – Listenable Maps for Audio Classifiers
 
 - link do artykułu: [https://arxiv.org/pdf/2403.13086](https://arxiv.org/pdf/2403.13086),
