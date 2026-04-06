@@ -133,6 +133,26 @@ $$\hat{q}^{eMPRT} = \frac{\xi(\hat{e}) - \xi(e)}{\xi(e)}$$
     - metoda sama w sobie skaluje dane, eliminuje błędy ręcznego ustawiania zakresów min-max,
     - uniwersalność – można tą metodę stosować do różnych architektur.
 
+## Najważniejsze wnioski
+
+### sMPRT
+- po usunięciu szumu, spore różnice skuteczności i wierności metod saliency, zaobserwowane w oryginalnych testach znacząco spadły:
+    - klasyczna metoda saliency okazywała się być znacząco lepsza niż Guided Backpropagation, bo podobieństwo spadało bardzo szybko po psuciu modelu,
+    - metryka SSIM – wrażliwa na szum sprawiała, że metody z szumiącym gradientem wyglądały na papierze znacznie lepiej,
+- sMPRT pokazało, że oryginalny test był niesprawiedliwy, mylił chaos z wrażliwością na parametry modelu,
+- ustalono, że N=50 jest optymalną liczbą próbek
+
+### eMPRT
+
+- nawet przy pełnej randomizacji modelu, żadna z badanych metod saliency nie osiąga teoretycznego limitu losowości, co oznaczałoby idealną wierność wobec parametrów sieci,
+- wynika to z ogromnej różnicy między złożonością sieci neuronowych, ich liczby parametrów, a znacznie prostszą naturą algorytmów wyjaśniających,
+- wyniki eksperymentów różnią się dla różnych zadań i architektur sieci neuronowych, nie zaobserwowano też całkowitej wyższości jednej metody nad pozostałymi,
+- oryginalny MPRT sugerował, że Guided BackProp jest mniej wiarygodny niż metody czysto gradientowe, testy eMPRT sklasyfikowały go jednak wyżej niż jej gradientowe odpowiedniki (Gradient, SmoothGrad)
+- duża zmienność wyników w zależności od architektury sieci np. w ResNet połączenia rezydualne częściowo zachowują strukturę cech w przepływie w przód, co utrudnia pokazanie czystego chaosu, z tego powodu autorzy zalecają ocenianie metod głównie na podstawie różnicy między modelem w pełni sprawnym a w pełni zrandomizownym.
+
+
+
+
 
 
 # Artykuł 3. – Listenable Maps for Audio Classifiers
