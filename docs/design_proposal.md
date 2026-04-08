@@ -30,7 +30,7 @@ Głównym celem projektu jest systematyczna weryfikacja wiarygodności metod atr
 * **CLI & Logi:** `typer`, `loguru`, `tqdm`
 * **Wizualizacja:** `matplotlib`, `seaborn`
 
-## Funkcjonwalności
+## Funkcjonalności
 
 Przetwarzanie danych i Pipeline
 - Automatyczny preprocessing audio: Konwersja surowych plików dźwiękowych (WAV/MP3) na znormalizowane spektrogramy melowe o stałych wymiarach.
