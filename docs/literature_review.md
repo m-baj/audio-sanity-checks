@@ -254,3 +254,53 @@ Aby upewnić się, że metoda faktycznie wyjaśnia działanie sieci, a nie tylko
 * **Test ROAR (Remove-and-Retrain)**: Wykazano, że usuwanie fragmentów uznanych przez L-MAC za najważniejsze powoduje znacznie szybszy spadek dokładności klasyfikatora niż usuwanie losowe. Potwierdza to, że metoda trafnie identyfikuje cechy semantyczne dźwięku.
 * **Czułość na parametry modelu (Cascading Randomization)**: Jest to kluczowy wynik – L-MAC pomyślnie przeszedł test randomizacji wag. Gdy wagi klasyfikatora są stopniowo zastępowane wartościami losowymi, mapy generowane przez L-MAC ulegają degradacji i tracą spójność. 
 * **Kontrast z GradCAM**: W przeciwieństwie do L-MAC, popularna metoda GradCAM okazała się niemal niewrażliwa na zmiany wag modelu, co sugeruje, że GradCAM działa bardziej jak prosty detektor krawędzi, a nie rzeczywiste wyjaśnienie "rozumowania" sieci.
+
+# Artykuł 4. - PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition
+
+*   **Link do artykułu:** [https://arxiv.org/pdf/1912.10211](https://arxiv.org/pdf/1912.10211)
+*   **Link do kodu i modeli:** [https://github.com/qiuqiangkong/audioset_tagging_cnn](https://github.com/qiuqiangkong/audioset_tagging_cnn)
+
+## Problem
+*   **Brak uniwersalnych modeli:** W przeciwieństwie do wizji komputerowej (ImageNet) i NLP (BERT/GPT), w audio brakowało potężnych, wstępnie wytrenowanych modeli, które można łatwo adaptować do różnych zadań.
+*   **Ograniczona ilość danych:** Większość systemów budowano na małych zbiorach danych o krótkim czasie trwania, co prowadziło do problemów z generalizacją (model uczył się specyfiki nagrań, a nie natury dźwięku).
+*   **Niedoskonałe cechy:** Wcześniejsze prace nad AudioSet opierały się na gotowych "embeddings" od Google, co ograniczało badaczy – autorzy PANNs postanowili trenować bezpośrednio na surowych nagraniach, aby wycisnąć z nich maksimum informacji.
+
+## Metodologia
+
+*   **AudioSet** – 1.9 miliona klipów, 527 klas dźwięków. Autorzy pobrali surowe pliki z YouTube (1,9 mln), zamiast polegać na przetworzonych danych.
+*   **Wavegram-Log-mel-CNN:** Innowacyjna architektura łącząca dwa światy:
+    *   **Log-mel spectrogram:** Klasyczna reprezentacja częstotliwościowa.
+    *   **Wavegram:** Warstwa ucząca się cech bezpośrednio z surowego sygnału za pomocą 1D-CNN, które są następnie przekształcane w formę 2D kompatybilną z resztą sieci.
+*   **Techniki regularyzacji i augmentacji:**
+    *   **Mixup:** Tworzenie nowych przykładów poprzez liniową kombinację dwóch różnych nagrań i ich etykiet.
+    *   **SpecAugment:** Maskowanie fragmentów spektrogramu w czasie i częstotliwości, aby wymusić na modelu odporność na braki w danych.
+*   **Transfer Learning:** Zaproponowanie trzech strategii przenoszenia wiedzy:
+    1.  Trening od zera (Baseline).
+    2.  PANN jako zamrożony ekstraktor cech (Freeze).
+    3.  Dostrajanie całego modelu (Fine-tuning).
+
+#### Architektury PANNs
+*   **CNN (6, 10, 14 warstw):** Klasyczne sieci splotowe. CNN14 stała się standardem dla wielu późniejszych badań.
+*   **ResNety i MobileNety:** Eksperymenty z głębokimi strukturami rezydualnymi (ResNet38) oraz lekkimi modelami na urządzenia mobilne.
+*   **Wavegram-Logmel-CNN (Kluczowa innowacja):**
+    *   Autorzy zauważyli, że sieci 1D (na surowej fali) i 2D (na spektrogramach) mają różne zalety.
+    *   Zaproponowali autorski moduł **Wavegram**, który uczy się reprezentacji czasowo-częstotliwościowej bezpośrednio z fali dźwiękowej.
+    *   Połączenie Wavegramu ze spektrogramem Log-mel dało najlepsze wyniki (SOTA).
+
+#### Przetwarzanie danych i trening
+*   **Zbalansowane próbkowanie:** Rozwiązanie problemu "długiego ogona" (np. ogromnej liczby nagrań mowy przy garstce nagrań szczoteczki do zębów). Wymuszono równomierną naukę wszystkich klas w każdej paczce danych.
+*   **Augmentacja:**
+    *   **Mixup:** Nakładanie na siebie dwóch nagrań i ich etykiet (np. 70% psa + 30% deszczu).
+    *   **SpecAugment:** Maskowanie fragmentów czasu i częstotliwości w spektrogramie, co zmusza sieć do szukania bardziej odpornych cech dźwięku.
+
+## Najważniejsze wnioski
+*   **Nowy rekord (SOTA):** Wavegram-Logmel-CNN osiągnął mAP na poziomie **0.431** na AudioSet, deklasując model Google (0.314) oraz wcześniejsze systemy (0.392).
+*   **Przewaga Fine-tuningu:** W zadaniach transferu wiedzy (np. klasyfikacja emocji w RAVDESS czy odgłosów w ESC-50), dostrajanie PANNs prawie zawsze wygrywało z treningiem od zera.
+*   **Znaczenie rozdzielczości:** Wykazano, że wysoka częstotliwość próbkowania (32 kHz) i gęstość analizy (mały hop size) są kluczowe dla rozpoznawania krótkich, gwałtownych zdarzeń dźwiękowych.
+*   **Złożoność vs Skuteczność:** MobileNety okazały się niemal 12 razy lżejsze obliczeniowo niż CNN14, przy stosunkowo niewielkim spadku precyzji, co czyni je idealnymi do aplikacji na smartfony.
+
+## Wyniki transferu na inne zadania (Benchmarki)
+*   **ESC-50:** Skok dokładności z 0.865 (poprzednie SOTA) na **0.947**.
+*   **RAVDESS (Emocje):** Poprawa z 0.645 na **0.721**.
+*   **MSoS:** Poprawa z 0.930 na **0.960**.
+*   Wnioski z transferu: Nawet jeśli model nie był uczony konkretnie emocji, jego ogólna wiedza o dźwięku pozwala mu błyskawicznie nauczyć się ich z małej liczby próbek.
