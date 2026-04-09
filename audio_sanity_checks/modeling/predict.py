@@ -8,7 +8,10 @@ import matplotlib.pyplot as plt
 
 from audio_sanity_checks.config import MODELS_DIR, PROCESSED_DATA_DIR
 
-from audio_sanity_checks.spectrograms import SpeechCommandsSpectrogramDataset
+from audio_sanity_checks.spectrograms import (
+    SpeechCommandsSpectrogramDataset,
+    ESC50SpectrogramDataset,
+)
 from torchvision.models import resnet18, ResNet18_Weights
 
 app = typer.Typer()
@@ -63,17 +66,21 @@ def plot_spectrogram(mel, *, label) -> None:
 
 
 @app.command()
-def main():
+def main(
+    dataset_path: Path = typer.Argument("speech_commands", help="Path to the dataset"),
+    index: int = typer.Argument(0, help="Index of the sample to predict"),
+    split: str = typer.Option("training", "--split", "-s", help="Split to use"),
+):
     weights = ResNet18_Weights.DEFAULT
     preprocess = weights.transforms()
     model = resnet18(weights=weights).eval()
     # print(model)
 
     dataset = torch.load(
-        PROCESSED_DATA_DIR / "speech_commands" / "speech_commands_training.pt",
+        PROCESSED_DATA_DIR / dataset_path / f"{dataset_path}_{split}.pt",
         weights_only=False,
     )
-    spec, label = dataset[0]
+    spec, label = dataset[index]
     mel = spec.squeeze(0).detach().cpu().numpy()
     print(mel.shape)
 
