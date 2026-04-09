@@ -4,22 +4,22 @@ import torch
 
 
 class SpectrogramModel(L.LightningModule):
-    def __init__(self, labels_dict: dict):
+    def __init__(self, num_classes: int):
         super().__init__()
-        self.model = resnet18(weights=ResNet18_Weights.DEFAULT)
+
+        weights = ResNet18_Weights.DEFAULT
+        self.model = resnet18(weights=weights)
         for param in self.model.parameters():
             param.requires_grad = False
-        self.model.fc = torch.nn.Linear(self.model.fc.in_features, len(labels_dict))
+        self.model.fc = torch.nn.Linear(self.model.fc.in_features, num_classes)
         self.loss_fn = torch.nn.CrossEntropyLoss()
         self.num_epochs = 10
-        self.labels_dict = labels_dict
 
     def forward(self, x):
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y = self.labels_dict[y]
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.log("train_loss", loss)
@@ -27,7 +27,6 @@ class SpectrogramModel(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        y = self.labels_dict[y]
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.log("val_loss", loss)
@@ -35,7 +34,6 @@ class SpectrogramModel(L.LightningModule):
 
     def test_step(self, batch, batch_idx):
         x, y = batch
-        y = self.labels_dict[y]
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
         self.log("test_loss", loss)
@@ -46,4 +44,4 @@ class SpectrogramModel(L.LightningModule):
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=self.num_epochs, eta_min=1e-6
         )
-        return {"optimizer": optimizer, "scheduler": scheduler}
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}

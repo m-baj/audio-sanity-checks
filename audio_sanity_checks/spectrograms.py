@@ -9,8 +9,12 @@ import typer
 import torchaudio
 from torch.utils.data import Dataset
 import torch
-
-from audio_sanity_checks.config import RAW_DATA_DIR, PROCESSED_DATA_DIR
+from audio_sanity_checks.config import (
+    RAW_DATA_DIR,
+    PROCESSED_DATA_DIR,
+    SPEECH_COMMANDS_LABELS_DICT,
+    ESC50_LABELS_DICT,
+)
 
 app = typer.Typer()
 
@@ -23,10 +27,12 @@ class SpectrogramDataset(Dataset):
         n_fft: int = 1024,
         hop_length: int = 512,
         n_mels: int = 64,
+        figure_size: tuple[int, int] = (224, 224),
     ):
         self.dataset_path = dataset_path
         self.sample_rate = sample_rate
-        self.transform = torch.nn.Sequential(
+        self.figure_size = figure_size
+        self.mel_spectrogram = torch.nn.Sequential(
             torchaudio.transforms.MelSpectrogram(
                 n_fft=n_fft,
                 hop_length=hop_length,
@@ -36,12 +42,27 @@ class SpectrogramDataset(Dataset):
         )
         self.processed = False
 
+    def transform(self, spec: torch.Tensor):
+        if spec.shape[0] == 1:
+            spec = spec.repeat(3, 1, 1)
+        spec = (
+            torch.nn.functional.interpolate(
+                spec.float().unsqueeze(0),
+                size=self.figure_size,
+                mode="bilinear",
+                align_corners=False,
+            )
+            .squeeze(0)
+            .squeeze(0)
+        )
+        return spec
+
     def _process_spectrogram(self, waveform: torch.Tensor, sample_rate: int):
         if sample_rate != self.sample_rate:
             waveform = torchaudio.functional.resample(
                 waveform, sample_rate, self.sample_rate
             )
-        return self.transform(waveform)
+        return self.mel_spectrogram(waveform)
 
     @abstractmethod
     def __len__(self) -> int: ...
@@ -59,11 +80,15 @@ class SpeechCommandsSpectrogramDataset(SpectrogramDataset):
         hop_length: int = 512,
         n_mels: int = 64,
         subset: str = None,
+        figure_size: tuple[int, int] = (224, 224),
     ):
-        super().__init__(dataset_path, sample_rate, n_fft, hop_length, n_mels)
+        super().__init__(
+            dataset_path, sample_rate, n_fft, hop_length, n_mels, figure_size
+        )
         self.dataset = torchaudio.datasets.SPEECHCOMMANDS(
             root=str(dataset_path), subset=subset
         )
+        self.labels_dict = SPEECH_COMMANDS_LABELS_DICT
 
     def process(self):
         self.spectrograms = []
@@ -86,7 +111,8 @@ class SpeechCommandsSpectrogramDataset(SpectrogramDataset):
             if self.processed
             else self._process_spectrogram(waveform, sample_rate)
         )
-        return spectrogram, label
+        figure = self.transform(spectrogram)
+        return figure, self.labels_dict[label]
 
 
 class ESC50SpectrogramDataset(SpectrogramDataset):
@@ -106,8 +132,11 @@ class ESC50SpectrogramDataset(SpectrogramDataset):
         hop_length: int = 512,
         n_mels: int = 64,
         subset: str | None = None,
+        figure_size: tuple[int, int] = (224, 224),
     ):
-        super().__init__(dataset_path, sample_rate, n_fft, hop_length, n_mels)
+        super().__init__(
+            dataset_path, sample_rate, n_fft, hop_length, n_mels, figure_size
+        )
         if subset is not None and subset not in (
             "training",
             "validation",
@@ -130,13 +159,15 @@ class ESC50SpectrogramDataset(SpectrogramDataset):
                 if subset == "testing" and fold != 5:
                     continue
                 self.samples.append((audio_dir / row["filename"], row["category"]))
+        self.labels_dict = ESC50_LABELS_DICT
 
     def process(self):
         self.spectrograms = []
         for i in tqdm(range(len(self.samples)), desc="Processing ESC-50"):
             path, _ = self.samples[i]
             waveform, sr = torchaudio.load(path)
-            self.spectrograms.append(self._process_spectrogram(waveform, sr))
+            spectrogram = self._process_spectrogram(waveform, sr)
+            self.spectrograms.append(spectrogram)
         self.processed = True
 
     def __len__(self):
@@ -149,7 +180,8 @@ class ESC50SpectrogramDataset(SpectrogramDataset):
             if self.processed
             else self._process_spectrogram(*torchaudio.load(path))
         )
-        return spectrogram, label
+        figure = self.transform(spectrogram)
+        return figure, self.labels_dict[label]
 
 
 def process_and_save_speech_commands(

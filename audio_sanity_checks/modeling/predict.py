@@ -18,50 +18,16 @@ app = typer.Typer()
 
 
 def plot_spectrogram(mel, *, label) -> None:
-    """
-    Plot the given mel spectrogram and its 224x224 bilinearly-resized version.
-
-    Args:
-        mel (Tensor or ndarray): The input mel spectrogram to plot.
-        label (str): Label associated with the spectrogram, for display.
-    """
-    mel_224 = (
-        torch.nn.functional.interpolate(
-            mel.float().unsqueeze(0),
-            size=(224, 224),
-            mode="bilinear",
-            align_corners=False,
-        )
-        .squeeze(0)
-        .squeeze(0)
-        .numpy()
-    )
 
     mel = mel.squeeze(0).detach().cpu().numpy()
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    im0 = axes[0].imshow(
-        mel, aspect="auto", origin="lower", interpolation="nearest", cmap="inferno"
+    im = plt.imshow(
+        mel[0], aspect="auto", origin="lower", interpolation="nearest", cmap="inferno"
     )
-    fig.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04, label="dB")
-    axes[0].set_title(
-        f"Mel spectrogram ({mel.shape[0]}×{mel.shape[1]}), label: {label!r}"
-    )
-    axes[0].set_xlabel("frame")
-    axes[0].set_ylabel("mel bin")
-
-    im1 = axes[1].imshow(
-        mel_224,
-        aspect="equal",
-        origin="lower",
-        interpolation="bilinear",
-        cmap="inferno",
-    )
-    fig.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04, label="dB")
-    axes[1].set_title("Same mel spectrogram rescaled to 224×224 (bilinear)")
-    axes[1].set_xlabel("pixel")
-    axes[1].set_ylabel("pixel")
-    plt.tight_layout()
+    plt.colorbar(im, fraction=0.046, pad=0.04, label="dB")
+    plt.title(f"Mel spectrogram ({mel.shape[0]}×{mel.shape[1]}), label: {label!r}")
+    plt.xlabel("frame")
+    plt.ylabel("mel bin")
     plt.show()
 
 
@@ -83,12 +49,10 @@ def main(
     spec, label = dataset[index]
     mel = spec.squeeze(0).detach().cpu().numpy()
     print(mel.shape)
+    print(label)
 
     plot_spectrogram(spec, label=label)
 
-    # ImageNet preprocess expects RGB (3 channels); mel spectrograms are single-channel.
-    if spec.shape[0] == 1:
-        spec = spec.repeat(3, 1, 1)
     spec = preprocess(spec)
     print(spec.shape)
     spec = spec.unsqueeze(0)
