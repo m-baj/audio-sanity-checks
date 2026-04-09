@@ -1,0 +1,49 @@
+import lightning as L
+from torchvision.models import resnet18, ResNet18_Weights
+import torch
+
+
+class SpectrogramModel(L.LightningModule):
+    def __init__(self, labels_dict: dict):
+        super().__init__()
+        self.model = resnet18(weights=ResNet18_Weights.DEFAULT)
+        for param in self.model.parameters():
+            param.requires_grad = False
+        self.model.fc = torch.nn.Linear(self.model.fc.in_features, len(labels_dict))
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.num_epochs = 10
+        self.labels_dict = labels_dict
+
+    def forward(self, x):
+        return self.model(x)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y = self.labels_dict[y]
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y = self.labels_dict[y]
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        y = self.labels_dict[y]
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log("test_loss", loss)
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=self.num_epochs, eta_min=1e-6
+        )
+        return {"optimizer": optimizer, "scheduler": scheduler}
