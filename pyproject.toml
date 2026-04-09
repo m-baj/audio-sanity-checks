@@ -32,6 +32,7 @@ dependencies = [
     "scikit-learn",
     "torchaudio>=2.10.0",
     "torchcodec>=0.10.0",
+    "torchvision>=0.25.0",
     "tqdm",
     "typer",
 ]
