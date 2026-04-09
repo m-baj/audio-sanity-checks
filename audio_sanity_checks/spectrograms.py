@@ -1,5 +1,7 @@
 import csv
+from abc import abstractmethod
 from pathlib import Path
+from typing import override
 
 from loguru import logger
 from tqdm import tqdm
@@ -24,10 +26,13 @@ class SpectrogramDataset(Dataset):
     ):
         self.dataset_path = dataset_path
         self.sample_rate = sample_rate
-        self.transform = torchaudio.transforms.MelSpectrogram(
-            n_fft=n_fft,
-            hop_length=hop_length,
-            n_mels=n_mels,
+        self.transform = torch.nn.Sequential(
+            torchaudio.transforms.MelSpectrogram(
+                n_fft=n_fft,
+                hop_length=hop_length,
+                n_mels=n_mels,
+            ),
+            torchaudio.transforms.AmplitudeToDB(),
         )
         self.processed = False
 
@@ -37,6 +42,12 @@ class SpectrogramDataset(Dataset):
                 waveform, sample_rate, self.sample_rate
             )
         return self.transform(waveform)
+
+    @abstractmethod
+    def __len__(self) -> int: ...
+
+    @abstractmethod
+    def __getitem__(self, idx): ...
 
 
 class SpeechCommandsSpectrogramDataset(SpectrogramDataset):
@@ -63,9 +74,11 @@ class SpeechCommandsSpectrogramDataset(SpectrogramDataset):
             self.spectrograms.append(spectrogram)
         self.processed = True
 
+    @override
     def __len__(self):
         return len(self.dataset)
 
+    @override
     def __getitem__(self, idx):
         waveform, sample_rate, label, _, _ = self.dataset[idx]
         spectrogram = (
