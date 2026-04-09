@@ -1,5 +1,6 @@
 # Data
 /data/
+/models/training/wandb/
 
 # Mac OS-specific storage files
 .DS_Store

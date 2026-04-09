@@ -15,10 +15,12 @@ from lightning.pytorch.callbacks import RichProgressBar
 from audio_sanity_checks.config import (
     PROCESSED_DATA_DIR,
     TRAINING_DIR,
-    SPEECH_COMMANDS_LABELS_DICT,
-    ESC50_LABELS_DICT,
 )
 from audio_sanity_checks.modeling.models import SpectrogramModel
+from audio_sanity_checks.spectrograms import (
+    SpeechCommandsSpectrogramDataset,
+    ESC50SpectrogramDataset,
+)
 
 app = typer.Typer()
 
@@ -41,26 +43,21 @@ def load_datasets(dataset_path: Path):
 
 @app.command()
 def main(
-    dataset_path: Path = typer.Argument("speech_commands", help="Path to the dataset"),
+    dataset_name: str = typer.Argument("speech_commands", help="Path to the dataset"),
 ):
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
 
     logger.info("Training spectrogram model...")
-    if dataset_path not in ["speech_commands", "esc50"]:
-        logger.error(f"Invalid dataset path: {dataset_path}")
+    if dataset_name not in ["speech_commands", "esc50"]:
+        logger.error(f"Invalid dataset path: {dataset_name}")
         raise typer.Exit(code=1)
-    if dataset_path == "speech_commands":
-        labels_dict = SPEECH_COMMANDS_LABELS_DICT
-    elif dataset_path == "esc50":
-        labels_dict = ESC50_LABELS_DICT
-    model = SpectrogramModel(labels_dict=labels_dict)
+    model = SpectrogramModel(num_classes=35)
     model.to(device)
 
     wandb_logger = WandbLogger(
         project="audio-sanity-checks",
-        name=f"{dataset_path}-resnet18",
+        name=f"{dataset_name}-resnet18-test-run",
         save_dir=TRAINING_DIR,
     )
 
@@ -75,8 +72,8 @@ def main(
         save_top_k=2,
         monitor="val_loss",
         mode="min",
-        dirpath=TRAINING_DIR / "resnet18",
-        filename=f"{dataset_path}" + "-{epoch:02d}-{val_loss:.4f}",
+        dirpath=TRAINING_DIR / "resnet18-test-run",
+        filename=f"{dataset_name}" + "-{epoch:02d}-{val_loss:.4f}",
     )
 
     trainer = L.Trainer(
@@ -86,7 +83,7 @@ def main(
         deterministic=True,
     )
 
-    train_dataset, val_dataset, test_dataset = load_datasets(dataset_path)
+    train_dataset, val_dataset, test_dataset = load_datasets(dataset_name)
     train_loader = DataLoader(
         train_dataset, batch_size=8, shuffle=True, num_workers=4, drop_last=True
     )
