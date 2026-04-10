@@ -37,9 +37,11 @@ def main(
     index: int = typer.Argument(0, help="Index of the sample to predict"),
     split: str = typer.Option("training", "--split", "-s", help="Split to use"),
 ):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     weights = ResNet18_Weights.DEFAULT
     preprocess = weights.transforms()
     model = resnet18(weights=weights).eval()
+    model.to(device)
     # print(model)
 
     dataset = torch.load(
@@ -55,7 +57,7 @@ def main(
 
     spec = preprocess(spec)
     print(spec.shape)
-    spec = spec.unsqueeze(0)
+    spec = spec.unsqueeze(0).to(device)
     pred = model(spec)
     pred_class = pred.argmax(dim=1).item()
     print(pred_class)

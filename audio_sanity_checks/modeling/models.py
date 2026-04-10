@@ -13,7 +13,7 @@ class SpectrogramModel(L.LightningModule):
             param.requires_grad = False
         self.model.fc = torch.nn.Linear(self.model.fc.in_features, num_classes)
         self.loss_fn = torch.nn.CrossEntropyLoss()
-        self.num_epochs = 10
+        self.num_epochs = 60
 
     def forward(self, x):
         return self.model(x)
@@ -29,15 +29,21 @@ class SpectrogramModel(L.LightningModule):
         x, y = batch
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
+        preds = y_hat.argmax(dim=1)
+        acc = (preds == y).float().mean()
         self.log("val_loss", loss)
+        self.log("val_acc", acc)
         return loss
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
+        preds = y_hat.argmax(dim=1)
+        acc = (preds == y).float().mean()
         self.log("test_loss", loss)
-        return loss
+        self.log("test_acc", acc)
+        return {"loss": loss, "acc": acc}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
