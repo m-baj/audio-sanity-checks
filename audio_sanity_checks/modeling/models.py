@@ -1,5 +1,6 @@
 import lightning as L
-from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models import resnet101, ResNet101_Weights
+from torchvision.transforms import v2
 import torch
 
 
@@ -7,15 +8,22 @@ class SpectrogramModel(L.LightningModule):
     def __init__(self, num_classes: int):
         super().__init__()
 
-        weights = ResNet18_Weights.DEFAULT
-        self.model = resnet18(weights=weights)
+        weights = ResNet101_Weights.DEFAULT
+        self.model = resnet101(weights=weights)
         for param in self.model.parameters():
             param.requires_grad = False
         self.model.fc = torch.nn.Linear(self.model.fc.in_features, num_classes)
         self.loss_fn = torch.nn.CrossEntropyLoss()
-        self.num_epochs = 60
+        self.num_epochs = 120
+        self.preprocess = v2.Compose(
+            [
+                v2.ToDtype(torch.float32, scale=True),
+                v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
 
     def forward(self, x):
+        x = self.preprocess(x)
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
